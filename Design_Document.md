@@ -10,9 +10,11 @@ https://www.twistbioscience.com/resources/data-files/ngs-human-core-exome-panel-
 ## Revised Architecture
 ```mermaid
 graph TD
-    A[Parse Arguments] --> B{Validate Inputs}
-    B -->|Missing Files| C[Exit with error]
-    B -->|Valid| D[Create Directories]
+    A[Parse Arguments] --> B{Validate File Paths}
+    B -->|Missing/Unreadable Files| C[Exit with error]
+    B -->|Valid Paths| B_BAM{Validate BAM Format/Index}
+    B_BAM -->|Invalid BAM| C
+    B_BAM -->|Valid BAM| D[Create Directories]
     D --> E[Run mosdepth]
     E --> F{Success?}
     F -->|No| G[Cleanup and exit]
@@ -20,7 +22,7 @@ graph TD
     H --> I{Keep Intermediates?}
     I -->|No| J[Remove Other Temp Files]
     I -->|Yes| K[Retain All Files]
-    J --> L[Final Output (.coverage.bed)]
+    J --> L["Final Output (.coverage.bed)"]
     K --> L
 ```
 
