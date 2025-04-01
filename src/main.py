@@ -5,6 +5,7 @@ import subprocess
 import sys
 import gzip
 import shutil
+import pysam
 from pathlib import Path
 
 def validate_file(path: str, description: str) -> Path:
@@ -15,6 +16,17 @@ def validate_file(path: str, description: str) -> Path:
     if not os.access(path, os.R_OK):
         sys.exit(f"Error: Cannot read {description} file at {path}")
     return path
+
+def validate_bam(bam_path: Path) -> None:
+    """Validate BAM file format and index using pysam"""
+    try:
+        with pysam.AlignmentFile(str(bam_path), "rb") as bam:
+            if not bam.check_index():
+                sys.exit(f"Error: BAM file {bam_path} is not indexed")
+    except ValueError as e:
+        sys.exit(f"Error: Invalid BAM file {bam_path}: {str(e)}")
+    except Exception as e:
+        sys.exit(f"Error validating BAM file {bam_path}: {str(e)}")
 
 def create_directory(dir_path: str) -> Path:
     """Create directory if it doesn't exist"""
@@ -56,6 +68,7 @@ def process_coverage_file(regions_gz: Path, output_file: Path):
 
 def main():
     parser = argparse.ArgumentParser(
+        add_help=False,  # We'll add our own help with alias
         description="Calculate coverage metrics from BED and BAM files using mosdepth")
     
     # Required arguments
@@ -72,6 +85,10 @@ def main():
                         help="Use full Twist Exome Core Covered Targets bed file")
     parser.add_argument("--keep-intermediates", action="store_true",
                         help="Keep intermediate files")
+    # Add help with alias
+    parser.add_argument("-h", "--help", "--hlep", action="help", default=argparse.SUPPRESS,
+                      help="Show this help message and exit")
+    
     args = parser.parse_args()
 
     print("Validating input files...")
@@ -82,6 +99,7 @@ def main():
     # Validate inputs
     bed_file = validate_file(args.bed, "BED")
     bam_file = validate_file(args.bam, "BAM")
+    validate_bam(bam_file)
 
     # Run mosdepth
     regions_gz = run_mosdepth(bed_file, bam_file, args.output_prefix, intermediates_dir)
